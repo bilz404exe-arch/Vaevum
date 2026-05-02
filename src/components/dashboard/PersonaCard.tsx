@@ -22,6 +22,7 @@ interface PersonaCardProps {
   lastActive: string;
   conversationId: string;
   onDelete: (personaId: string) => void;
+  onEdit: (personaId: string) => void;
   onClick: () => void;
 }
 
@@ -30,6 +31,7 @@ export default function PersonaCard({
   lastMessage,
   lastActive,
   onDelete,
+  onEdit,
   onClick,
 }: PersonaCardProps) {
   const [hovered, setHovered] = useState(false);
@@ -91,14 +93,12 @@ export default function PersonaCard({
     marginBottom: 0,
   };
 
-  const deleteButtonStyle: React.CSSProperties = {
+  const iconBtnBase: React.CSSProperties = {
     position: "absolute",
     top: "12px",
-    right: "12px",
     background: "none",
     border: "none",
-    color: "#ff6b9d",
-    fontSize: "1.25rem",
+    fontSize: "1rem",
     cursor: "pointer",
     padding: "0 4px",
     lineHeight: 1,
@@ -107,9 +107,28 @@ export default function PersonaCard({
     pointerEvents: hovered ? "auto" : "none",
   };
 
+  const deleteButtonStyle: React.CSSProperties = {
+    ...iconBtnBase,
+    right: "12px",
+    color: "#ff6b9d",
+    fontSize: "1.25rem",
+  };
+
+  const editButtonStyle: React.CSSProperties = {
+    ...iconBtnBase,
+    right: "36px",
+    color: "#9d8cff",
+    fontSize: "0.9rem",
+  };
+
   function handleDeleteClick(e: React.MouseEvent) {
     e.stopPropagation();
     onDelete(persona.id);
+  }
+
+  function handleEditClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    onEdit(persona.id);
   }
 
   return (
@@ -138,6 +157,15 @@ export default function PersonaCard({
       <div style={{ marginTop: "8px" }}>
         <ModeBadge mode={persona.mode} />
       </div>
+
+      {/* Edit icon */}
+      <button
+        style={editButtonStyle}
+        onClick={handleEditClick}
+        aria-label={`Edit ${persona.name}`}
+      >
+        ✏
+      </button>
 
       {/* Delete icon */}
       <button

@@ -3,12 +3,13 @@ import { useRouter } from "next/router";
 import PageWrapper from "@/components/layout/PageWrapper";
 import Header from "@/components/layout/Header";
 import PersonaCard from "@/components/dashboard/PersonaCard";
+import EditPersonaModal from "@/components/dashboard/EditPersonaModal";
 import EmptyState from "@/components/dashboard/EmptyState";
 import Modal from "@/components/ui/Modal";
 import { useRequireAuth } from "@/lib/withAuth";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { fetchWithAuth } from "@/lib/utils";
+import { fetchWithAuth, relativeTime, truncate } from "@/lib/utils";
 import { Persona, Conversation } from "@/types";
 
 // Persona enriched with conversation data for display
@@ -24,6 +25,11 @@ interface DeleteModal {
   personaName: string;
 }
 
+interface EditModalState {
+  open: boolean;
+  persona: PersonaWithConversation;
+}
+
 export default function DashboardPage() {
   const { loading } = useRequireAuth();
   const { user, signOut } = useAuth();
@@ -33,6 +39,7 @@ export default function DashboardPage() {
   const [personas, setPersonas] = useState<PersonaWithConversation[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState<DeleteModal | null>(null);
+  const [editModal, setEditModal] = useState<EditModalState | null>(null);
 
   useEffect(() => {
     // Don't fetch until auth check is complete
@@ -130,6 +137,33 @@ export default function DashboardPage() {
     setDeleteModal(null);
   }
 
+  function handleEditRequest(personaId: string) {
+    const persona = personas.find((p) => p.id === personaId);
+    if (!persona) return;
+    setEditModal({ open: true, persona });
+  }
+
+  function handleEditSave(updated: Persona) {
+    setPersonas((prev) =>
+      prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+    );
+    setEditModal(null);
+  }
+
+  function handleEditClose() {
+    setEditModal(null);
+  }
+
+  // ─── Recent conversations (last 5 with a conversationId, sorted by lastActive) ──
+
+  const recentConversations = personas
+    .filter((p) => p.conversationId)
+    .sort(
+      (a, b) =>
+        new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime(),
+    )
+    .slice(0, 5);
+
   // ─── Skeleton card component ──────────────────────────────────────────────
 
   function SkeletonCard() {
@@ -188,11 +222,38 @@ export default function DashboardPage() {
     color: "#6b6880",
   };
 
+  const recentSectionStyle: React.CSSProperties = {
+    borderTop: "1px solid rgba(255,255,255,0.06)",
+    marginTop: "32px",
+    paddingTop: "24px",
+  };
+
+  const recentTitleStyle: React.CSSProperties = {
+    fontFamily: '"Space Mono", monospace',
+    fontSize: "0.65rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+    color: "#6b6880",
+    marginBottom: "16px",
+  };
+
+  const recentRowStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 0",
+    borderBottom: "1px solid rgba(255,255,255,0.04)",
+    cursor: "pointer",
+    transition: "opacity 0.15s ease",
+  };
+
   return (
     <PageWrapper>
       <Header
         userEmail={user?.email}
         username={profile?.username}
+        avatarUrl={profile?.avatar_url ?? undefined}
         onLogout={signOut}
       />
 
@@ -213,46 +274,68 @@ export default function DashboardPage() {
         {!dataLoading && personas.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="dashboard-grid" style={gridStyle}>
-            {/* "+ New Persona" card — always first */}
-            <div
-              style={newCardStyle}
-              onClick={() => router.push("/builder")}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLDivElement).style.borderColor =
-                  "rgba(255,255,255,0.10)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLDivElement).style.borderColor =
-                  "rgba(255,255,255,0.06)";
-              }}
-            >
-              <span style={newCardIconStyle}>+</span>
-              <span style={newCardLabelStyle}>New Persona</span>
+          <>
+            <div className="dashboard-grid" style={gridStyle}>
+              {/* "+ New Persona" card — always first */}
+              <div
+                style={newCardStyle}
+                onClick={() => router.push("/builder")}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor =
+                    "rgba(255,255,255,0.10)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor =
+                    "rgba(255,255,255,0.06)";
+                }}
+              >
+                <span style={newCardIconStyle}>+</span>
+                <span style={newCardLabelStyle}>New Persona</span>
+              </div>
+
+              {/* Skeleton cards while loading */}
+              {dataLoading && (
+                <>
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </>
+              )}
+
+              {/* Persona cards */}
+              {!dataLoading &&
+                personas.map((persona) => (
+                  <PersonaCard
+                    key={persona.id}
+                    persona={persona}
+                    lastMessage={persona.lastMessage}
+                    lastActive={persona.lastActive}
+                    conversationId={persona.conversationId}
+                    onDelete={handleDeleteRequest}
+                    onEdit={handleEditRequest}
+                    onClick={() => handlePersonaClick(persona.conversationId)}
+                  />
+                ))}
             </div>
 
-            {/* Skeleton cards while loading */}
-            {dataLoading && (
-              <>
-                <SkeletonCard />
-                <SkeletonCard />
-              </>
+            {/* ── Recent Conversations ─────────────────────────────────── */}
+            {!dataLoading && recentConversations.length > 0 && (
+              <div style={recentSectionStyle}>
+                <p style={recentTitleStyle}>Recent</p>
+                <div>
+                  {recentConversations.map((p) => (
+                    <RecentRow
+                      key={p.conversationId}
+                      personaName={p.name}
+                      lastMessage={p.lastMessage}
+                      lastActive={p.lastActive}
+                      rowStyle={recentRowStyle}
+                      onClick={() => router.push(`/chat/${p.conversationId}`)}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
-
-            {/* Persona cards */}
-            {!dataLoading &&
-              personas.map((persona) => (
-                <PersonaCard
-                  key={persona.id}
-                  persona={persona}
-                  lastMessage={persona.lastMessage}
-                  lastActive={persona.lastActive}
-                  conversationId={persona.conversationId}
-                  onDelete={handleDeleteRequest}
-                  onClick={() => handlePersonaClick(persona.conversationId)}
-                />
-              ))}
-          </div>
+          </>
         )}
       </main>
 
@@ -277,6 +360,93 @@ export default function DashboardPage() {
           </p>
         </Modal>
       )}
+
+      {/* Edit persona modal */}
+      {editModal && (
+        <EditPersonaModal
+          persona={editModal.persona}
+          open={editModal.open}
+          onClose={handleEditClose}
+          onSave={handleEditSave}
+        />
+      )}
     </PageWrapper>
+  );
+}
+
+// ─── Recent Row sub-component ─────────────────────────────────────────────────
+
+interface RecentRowProps {
+  personaName: string;
+  lastMessage: string | null;
+  lastActive: string;
+  rowStyle: React.CSSProperties;
+  onClick: () => void;
+}
+
+function RecentRow({
+  personaName,
+  lastMessage,
+  lastActive,
+  rowStyle,
+  onClick,
+}: RecentRowProps) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      style={{ ...rowStyle, opacity: hovered ? 0.7 : 1 }}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Left: persona name + last message */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: '"Cormorant Garamond", serif',
+            fontStyle: "italic",
+            fontSize: "1rem",
+            color: "#e8e6f0",
+            fontWeight: 300,
+          }}
+        >
+          {personaName}
+        </span>
+        <span
+          style={{
+            fontFamily: '"Space Mono", monospace',
+            fontSize: "0.7rem",
+            color: "#6b6880",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {truncate(lastMessage ?? "", 60)}
+        </span>
+      </div>
+
+      {/* Right: relative timestamp */}
+      <span
+        style={{
+          fontFamily: '"Space Mono", monospace',
+          fontSize: "0.65rem",
+          color: "#3a3850",
+          flexShrink: 0,
+          marginLeft: "16px",
+        }}
+      >
+        {relativeTime(lastActive)}
+      </span>
+    </div>
   );
 }

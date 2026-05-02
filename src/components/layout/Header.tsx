@@ -4,10 +4,16 @@ import Button from "../ui/Button";
 interface HeaderProps {
   userEmail?: string;
   username?: string;
+  avatarUrl?: string;
   onLogout?: () => void;
 }
 
-export default function Header({ userEmail, username, onLogout }: HeaderProps) {
+export default function Header({
+  userEmail,
+  username,
+  avatarUrl,
+  onLogout,
+}: HeaderProps) {
   return (
     <>
       <style>{`
@@ -50,7 +56,7 @@ export default function Header({ userEmail, username, onLogout }: HeaderProps) {
           VAEVUM
         </span>
 
-        {/* Right: user email + logout */}
+        {/* Right: avatar + username + logout */}
         <div
           style={{
             display: "flex",
@@ -60,15 +66,38 @@ export default function Header({ userEmail, username, onLogout }: HeaderProps) {
           }}
         >
           {(username || userEmail) && (
-            <span
+            <div
               style={{
-                fontFamily: '"Space Mono", monospace',
-                fontSize: "0.75rem",
-                color: "#6b6880",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "8px",
               }}
             >
-              {username ? `@${username}` : userEmail}
-            </span>
+              {/* Avatar image if available */}
+              {avatarUrl && (
+                <img
+                  src={avatarUrl}
+                  alt={username ?? "avatar"}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+              <span
+                style={{
+                  fontFamily: '"Space Mono", monospace',
+                  fontSize: "0.75rem",
+                  color: "#6b6880",
+                }}
+              >
+                {username ? `@${username}` : userEmail}
+              </span>
+            </div>
           )}
           {onLogout && (
             <div style={{ fontSize: "0.75rem" }}>

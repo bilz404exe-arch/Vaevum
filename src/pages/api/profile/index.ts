@@ -6,6 +6,7 @@ interface Profile {
   user_id: string;
   username: string;
   display_name: string | null;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,7 +37,9 @@ export default async function handler(
   if (req.method === "GET") {
     const { data, error } = await supabaseWithAuth
       .from("profiles")
-      .select("id, user_id, username, display_name, created_at, updated_at")
+      .select(
+        "id, user_id, username, display_name, avatar_url, created_at, updated_at",
+      )
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -56,11 +59,9 @@ export default async function handler(
         .json({ error: "Username must be at least 3 characters" });
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      return res
-        .status(400)
-        .json({
-          error: "Username can only contain letters, numbers, and underscores",
-        });
+      return res.status(400).json({
+        error: "Username can only contain letters, numbers, and underscores",
+      });
     }
 
     const { data, error } = await supabaseWithAuth
@@ -70,7 +71,9 @@ export default async function handler(
         username: username.trim().toLowerCase(),
         display_name: display_name ?? null,
       })
-      .select("id, user_id, username, display_name, created_at, updated_at")
+      .select(
+        "id, user_id, username, display_name, avatar_url, created_at, updated_at",
+      )
       .single();
 
     if (error) {
@@ -82,9 +85,10 @@ export default async function handler(
   }
 
   if (req.method === "PATCH") {
-    const { username, display_name } = req.body as {
+    const { username, display_name, avatar_url } = req.body as {
       username?: string;
       display_name?: string;
+      avatar_url?: string;
     };
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -96,21 +100,21 @@ export default async function handler(
           .status(400)
           .json({ error: "Username must be at least 3 characters" });
       if (!/^[a-zA-Z0-9_]+$/.test(username))
-        return res
-          .status(400)
-          .json({
-            error:
-              "Username can only contain letters, numbers, and underscores",
-          });
+        return res.status(400).json({
+          error: "Username can only contain letters, numbers, and underscores",
+        });
       updates.username = username.trim().toLowerCase();
     }
     if (display_name !== undefined) updates.display_name = display_name;
+    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     const { data, error } = await supabaseWithAuth
       .from("profiles")
       .update(updates)
       .eq("user_id", user.id)
-      .select("id, user_id, username, display_name, created_at, updated_at")
+      .select(
+        "id, user_id, username, display_name, avatar_url, created_at, updated_at",
+      )
       .single();
 
     if (error) {

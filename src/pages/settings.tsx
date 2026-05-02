@@ -14,7 +14,7 @@ import { Persona } from "@/types";
 export default function SettingsPage() {
   const { loading } = useRequireAuth();
   const { user, signOut } = useAuth();
-  const { profile, updateProfile } = useProfile();
+  const { profile, updateProfile, uploadAvatar } = useProfile();
   const router = useRouter();
 
   // ─── Username state ───────────────────────────────────────────────────────
@@ -39,6 +39,11 @@ export default function SettingsPage() {
   // ─── Personas state ───────────────────────────────────────────────────────
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [personasLoading, setPersonasLoading] = useState(true);
+
+  // ─── Avatar upload state ──────────────────────────────────────────────────
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarSuccess, setAvatarSuccess] = useState("");
 
   // ─── Delete Account state ─────────────────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -159,6 +164,51 @@ export default function SettingsPage() {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
     }
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarError("");
+    setAvatarSuccess("");
+
+    const accepted = ["image/jpeg", "image/png", "image/webp"];
+    if (!accepted.includes(file.type)) {
+      setAvatarError("Accepted formats: JPEG, PNG, WebP.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("File must be under 2MB.");
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        // Strip the data URL prefix to get raw base64
+        const base64 = dataUrl.split(",")[1];
+        const { error } = await uploadAvatar(base64, file.type);
+        if (error) {
+          setAvatarError(error);
+        } else {
+          setAvatarSuccess("Photo updated.");
+        }
+        setAvatarUploading(false);
+      };
+      reader.onerror = () => {
+        setAvatarError("Failed to read file.");
+        setAvatarUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setAvatarError("Something went wrong.");
+      setAvatarUploading(false);
+    }
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
   }
 
   // ─── Styles ───────────────────────────────────────────────────────────────
@@ -287,6 +337,7 @@ export default function SettingsPage() {
       <Header
         userEmail={user?.email}
         username={profile?.username}
+        avatarUrl={profile?.avatar_url ?? undefined}
         onLogout={signOut}
       />
 
@@ -295,6 +346,101 @@ export default function SettingsPage() {
         <section>
           <p style={sectionTitleStyle}>Account</p>
           <div style={emailStyle}>{user?.email}</div>
+        </section>
+
+        {/* ── Avatar Section ───────────────────────────────────────────────── */}
+        <section style={sectionStyle}>
+          <p style={sectionTitleStyle}>Profile Photo</p>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "20px",
+            }}
+          >
+            {/* Current avatar or placeholder */}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                background: "rgba(157,140,255,0.08)",
+                border: "1px solid rgba(157,140,255,0.15)",
+                borderRadius: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                overflow: "hidden",
+              }}
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Your avatar"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontFamily: '"Space Mono", monospace',
+                    fontSize: "1.5rem",
+                    color: "#3a3850",
+                  }}
+                >
+                  ◻
+                </span>
+              )}
+            </div>
+
+            {/* Upload button */}
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              <label
+                style={{
+                  display: "inline-block",
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 0,
+                  color: avatarUploading ? "#3a3850" : "#e8e6f0",
+                  fontFamily: '"Space Mono", monospace',
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  padding: "10px 24px",
+                  cursor: avatarUploading ? "not-allowed" : "pointer",
+                  transition: "border-color 0.2s ease",
+                  opacity: avatarUploading ? 0.5 : 1,
+                }}
+              >
+                {avatarUploading ? "Uploading..." : "Upload Photo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={avatarUploading}
+                  style={{ display: "none" }}
+                />
+              </label>
+              <span
+                style={{
+                  fontFamily: '"Space Mono", monospace',
+                  fontSize: "0.65rem",
+                  color: "#3a3850",
+                }}
+              >
+                JPEG, PNG or WebP · max 2MB
+              </span>
+            </div>
+          </div>
+
+          {avatarError && <p style={inlineErrorStyle}>{avatarError}</p>}
+          {avatarSuccess && <p style={inlineSuccessStyle}>{avatarSuccess}</p>}
         </section>
 
         {/* ── Username Section ─────────────────────────────────────────────── */}

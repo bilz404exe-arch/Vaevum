@@ -6,6 +6,7 @@ export interface Profile {
   user_id: string;
   username: string;
   display_name: string | null;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -16,7 +17,12 @@ interface UseProfileReturn {
   updateProfile: (data: {
     username?: string;
     display_name?: string;
+    avatar_url?: string;
   }) => Promise<{ error?: string }>;
+  uploadAvatar: (
+    base64: string,
+    mimeType: string,
+  ) => Promise<{ url?: string; error?: string }>;
 }
 
 export function useProfile(): UseProfileReturn {
@@ -43,6 +49,7 @@ export function useProfile(): UseProfileReturn {
   const updateProfile = async (data: {
     username?: string;
     display_name?: string;
+    avatar_url?: string;
   }) => {
     try {
       const method = profile ? "PATCH" : "POST";
@@ -60,5 +67,33 @@ export function useProfile(): UseProfileReturn {
     }
   };
 
-  return { profile, loading, updateProfile };
+  const uploadAvatar = async (
+    base64: string,
+    mimeType: string,
+  ): Promise<{ url?: string; error?: string }> => {
+    try {
+      const res = await fetchWithAuth("/api/profile/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        return { error: (json as { error?: string }).error ?? "Upload failed" };
+      }
+      const { url } = json as { url: string };
+
+      // Persist the URL to the profile
+      const saveResult = await updateProfile({ avatar_url: url });
+      if (saveResult.error) {
+        return { error: saveResult.error };
+      }
+
+      return { url };
+    } catch {
+      return { error: "Something went wrong during upload" };
+    }
+  };
+
+  return { profile, loading, updateProfile, uploadAvatar };
 }

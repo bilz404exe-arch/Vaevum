@@ -23,3 +23,6 @@ CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (auth.uid() = user_
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "profiles_delete" ON profiles FOR DELETE USING (auth.uid() = user_id);
+
+-- Add avatar_url column (migration addendum)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url text;
