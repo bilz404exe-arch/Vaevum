@@ -7,9 +7,14 @@ interface Profile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  instagram_username: string | null;
+  instagram_password: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const SELECT_FIELDS =
+  "id, user_id, username, display_name, avatar_url, instagram_username, instagram_password, created_at, updated_at";
 
 function createAuthClient(token: string) {
   return createClient(
@@ -34,12 +39,11 @@ export default async function handler(
   if (authError || !user)
     return res.status(401).json({ error: "Unauthorized" });
 
+  // ─── GET ──────────────────────────────────────────────────────────────────
   if (req.method === "GET") {
     const { data, error } = await supabaseWithAuth
       .from("profiles")
-      .select(
-        "id, user_id, username, display_name, avatar_url, created_at, updated_at",
-      )
+      .select(SELECT_FIELDS)
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -48,11 +52,16 @@ export default async function handler(
     return res.status(200).json(data as Profile);
   }
 
+  // ─── POST ─────────────────────────────────────────────────────────────────
   if (req.method === "POST") {
-    const { username, display_name } = req.body as {
-      username?: string;
-      display_name?: string;
-    };
+    const { username, display_name, instagram_username, instagram_password } =
+      req.body as {
+        username?: string;
+        display_name?: string;
+        instagram_username?: string;
+        instagram_password?: string;
+      };
+
     if (!username || username.trim().length < 3) {
       return res
         .status(400)
@@ -70,10 +79,10 @@ export default async function handler(
         user_id: user.id,
         username: username.trim().toLowerCase(),
         display_name: display_name ?? null,
+        instagram_username: instagram_username ?? null,
+        instagram_password: instagram_password ?? null,
       })
-      .select(
-        "id, user_id, username, display_name, avatar_url, created_at, updated_at",
-      )
+      .select(SELECT_FIELDS)
       .single();
 
     if (error) {
@@ -84,12 +93,22 @@ export default async function handler(
     return res.status(201).json(data as Profile);
   }
 
+  // ─── PATCH ────────────────────────────────────────────────────────────────
   if (req.method === "PATCH") {
-    const { username, display_name, avatar_url } = req.body as {
+    const {
+      username,
+      display_name,
+      avatar_url,
+      instagram_username,
+      instagram_password,
+    } = req.body as {
       username?: string;
       display_name?: string;
       avatar_url?: string;
+      instagram_username?: string;
+      instagram_password?: string;
     };
+
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
@@ -107,14 +126,16 @@ export default async function handler(
     }
     if (display_name !== undefined) updates.display_name = display_name;
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    if (instagram_username !== undefined)
+      updates.instagram_username = instagram_username;
+    if (instagram_password !== undefined)
+      updates.instagram_password = instagram_password;
 
     const { data, error } = await supabaseWithAuth
       .from("profiles")
       .update(updates)
       .eq("user_id", user.id)
-      .select(
-        "id, user_id, username, display_name, avatar_url, created_at, updated_at",
-      )
+      .select(SELECT_FIELDS)
       .single();
 
     if (error) {

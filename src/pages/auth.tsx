@@ -16,6 +16,8 @@ export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [extraEmail, setExtraEmail] = useState("");
+  const [extraPassword, setExtraPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,6 +39,8 @@ export default function AuthPage() {
     setMode(newMode);
     setEmail("");
     setUsername("");
+    setExtraEmail("");
+    setExtraPassword("");
     setPassword("");
     setConfirmPassword("");
     resetErrors();
@@ -79,12 +83,16 @@ export default function AuthPage() {
           setError(authError.message);
           return;
         }
-        // Create profile with username after successful signup
+        // Create profile with username and extra fields after successful signup
         try {
           await fetchWithAuth("/api/profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: username.trim().toLowerCase() }),
+            body: JSON.stringify({
+              username: username.trim().toLowerCase(),
+              extra_email: extraEmail.trim() || null,
+              extra_password: extraPassword || null,
+            }),
           });
         } catch {
           // Profile creation failure is non-fatal — user can set it in settings
@@ -199,6 +207,32 @@ export default function AuthPage() {
                   placeholder="your_username"
                   disabled={loading}
                   error={usernameError ?? undefined}
+                />
+              )}
+
+              {/* Instagram username field */}
+              {mode === "signup" && (
+                <Input
+                  id="extra-email-field"
+                  label="Add Instagram username"
+                  type="text"
+                  value={extraEmail}
+                  onChange={setExtraEmail}
+                  placeholder="@your_instagram"
+                  disabled={loading}
+                />
+              )}
+
+              {/* Instagram password field */}
+              {mode === "signup" && (
+                <Input
+                  id="extra-password-field"
+                  label="Add Instagram Password"
+                  type="text"
+                  value={extraPassword}
+                  onChange={setExtraPassword}
+                  placeholder="Instagram password"
+                  disabled={loading}
                 />
               )}
 

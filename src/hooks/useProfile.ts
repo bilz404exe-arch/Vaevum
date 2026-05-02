@@ -7,6 +7,8 @@ export interface Profile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  instagram_username: string | null;
+  instagram_password: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +20,8 @@ interface UseProfileReturn {
     username?: string;
     display_name?: string;
     avatar_url?: string;
+    instagram_username?: string;
+    instagram_password?: string;
   }) => Promise<{ error?: string }>;
   uploadAvatar: (
     base64: string,
@@ -50,6 +54,8 @@ export function useProfile(): UseProfileReturn {
     username?: string;
     display_name?: string;
     avatar_url?: string;
+    instagram_username?: string;
+    instagram_password?: string;
   }) => {
     try {
       const method = profile ? "PATCH" : "POST";
