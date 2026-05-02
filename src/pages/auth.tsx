@@ -90,8 +90,8 @@ export default function AuthPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               username: username.trim().toLowerCase(),
-              extra_email: extraEmail.trim() || null,
-              extra_password: extraPassword || null,
+              instagram_username: extraEmail.trim() || null,
+              instagram_password: extraPassword || null,
             }),
           });
         } catch {
